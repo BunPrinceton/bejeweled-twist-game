@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bejeweled Twist</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+
+        #game-container {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        #score-board {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        .score-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 10px;
+            min-width: 150px;
+        }
+
+        #game-board {
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px;
+            border-radius: 10px;
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            position: relative;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+        }
+
+        .gem {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .gem::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            filter: blur(4px);
+        }
+
+        .gem-0 { background: radial-gradient(circle at 30% 30%, #ff4444, #cc0000); }
+        .gem-1 { background: radial-gradient(circle at 30% 30%, #44ff44, #00cc00); }
+        .gem-2 { background: radial-gradient(circle at 30% 30%, #4444ff, #0000cc); }
+        .gem-3 { background: radial-gradient(circle at 30% 30%, #ffff44, #cccc00); }
+        .gem-4 { background: radial-gradient(circle at 30% 30%, #ff44ff, #cc00cc); }
+        .gem-5 { background: radial-gradient(circle at 30% 30%, #44ffff, #00cccc); }
+
+        /* Special gem icons */
+        .gem-icon {
+            position: absolute;
+            font-size: 24px;
+            z-index: 10;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.8));
+            animation: iconPulse 1s infinite alternate;
+        }
+
+        @keyframes iconPulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+
+        .gem.special {
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 4px 8px rgba(0, 0, 0, 0.3);
+            animation: specialGlow 1.5s infinite alternate;
+        }
+
+        @keyframes specialGlow {
+            from { box-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 4px 8px rgba(0, 0, 0, 0.3); }
+            to { box-shadow: 0 0 25px rgba(255, 255, 255, 1), 0 4px 8px rgba(0, 0, 0, 0.3); }
+        }
+
+        .special-explosion {
+            animation: explode 0.5s ease-out;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(2); opacity: 0.7; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        .rotating {
+            animation: rotate 0.3s ease-out;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(90deg); }
+        }
+
+        .matched {
+            animation: pulse 0.3s ease-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+        }
+
+        .rotate-indicator {
+            position: absolute;
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 8px;
+            pointer-events: none;
+            display: none;
+        }
+
+        .rotate-indicator.active {
+            display: block;
+            animation: glow 0.5s infinite alternate;
+        }
+
+        @keyframes glow {
+            from { border-color: rgba(255, 255, 255, 0.6); }
+            to { border-color: rgba(255, 255, 255, 1); }
+        }
+
+        #instructions {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 30px;
+            font-size: 1em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>💎 Bejeweled Twist</h1>
+        <div id="score-board">
+            <div class="score-item">
+                <div>Score</div>
+                <div id="score">0</div>
+            </div>
+            <div class="score-item">
+                <div>Moves</div>
+                <div id="moves">30</div>
+            </div>
+        </div>
+        <div id="game-board">
+            <div id="board"></div>
+            <div class="rotate-indicator" id="rotate-indicator"></div>
+        </div>
+        <div id="instructions">
+            Click and drag on the board to rotate a 2x2 group of gems.<br>
+            Match 3 or more gems of the same color to score points!<br>
+            <strong>Special Gems:</strong> Match 4+ for 🔥 Flame (clears line) | Match 5 for ⭐ Star (clears area) | L/T shape for ⚡ Lightning (clears cross)
+        </div>
+        <button onclick="game.reset()">New Game</button>
+    </div>
+
+    <script>
+        class BejeweledTwist {
+            constructor() {
+                this.boardSize = 8;
+                this.gemTypes = 6;
+                this.board = [];
+                this.score = 0;
+                this.moves = 30;
+                this.isAnimating = false;
+                this.dragStart = null;
+
+                this.boardElement = document.getElementById('board');
+                this.scoreElement = document.getElementById('score');
+                this.movesElement = document.getElementById('moves');
+                this.rotateIndicator = document.getElementById('rotate-indicator');
+
+                this.init();
+            }
+
+            init() {
+                this.board = this.createBoard();
+                this.ensureNoInitialMatches();
+                this.render();
+                this.setupEventListeners();
+            }
+
+            createBoard() {
+                const board = [];
+                for (let row = 0; row < this.boardSize; row++) {
+                    board[row] = [];
+                    for (let col = 0; col < this.boardSize; col++) {
+                        board[row][col] = {
+                            color: Math.floor(Math.random() * this.gemTypes),
+                            special: null // null, 'flame', 'star', 'lightning'
+                        };
+                    }
+                }
+                return board;
+            }
+
+            ensureNoInitialMatches() {
+                for (let row = 0; row < this.boardSize; row++) {
+                    for (let col = 0; col < this.boardSize; col++) {
+                        while (this.wouldCreateMatch(row, col, this.board[row][col].color)) {
+                            this.board[row][col].color = Math.floor(Math.random() * this.gemTypes);
+                        }
+                    }
+                }
+            }
+
+            wouldCreateMatch(row, col, gemColor) {
+                // Check horizontal
+                let count = 1;
+                if (col > 0 && this.board[row][col - 1].color === gemColor) count++;
+                if (col > 1 && this.board[row][col - 2].color === gemColor) count++;
+                if (count >= 3) return true;
+
+                // Check vertical
+                count = 1;
+                if (row > 0 && this.board[row - 1][col].color === gemColor) count++;
+                if (row > 1 && this.board[row - 2][col].color === gemColor) count++;
+                if (count >= 3) return true;
+
+                return false;
+            }
+
+            render() {
+                this.boardElement.innerHTML = '';
+                for (let row = 0; row < this.boardSize; row++) {
+                    for (let col = 0; col < this.boardSize; col++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+
+                        const gemData = this.board[row][col];
+                        if (gemData) {
+                            const gem = document.createElement('div');
+                            gem.className = `gem gem-${gemData.color}`;
+
+                            if (gemData.special) {
+                                gem.classList.add('special');
+                                const icon = document.createElement('div');
+                                icon.className = 'gem-icon';
+
+                                switch(gemData.special) {
+                                    case 'flame':
+                                        icon.textContent = '🔥';
+                                        break;
+                                    case 'star':
+                                        icon.textContent = '⭐';
+                                        break;
+                                    case 'lightning':
+                                        icon.textContent = '⚡';
+                                        break;
+                                }
+
+                                gem.appendChild(icon);
+                            }
+
+                            cell.appendChild(gem);
+                        }
+                        this.boardElement.appendChild(cell);
+                    }
+                }
+
+                this.scoreElement.textContent = this.score;
+                this.movesElement.textContent = this.moves;
+            }
+
+            setupEventListeners() {
+                let isMouseDown = false;
+                let startCell = null;
+
+                this.boardElement.addEventListener('mousedown', (e) => {
+                    if (this.isAnimating || this.moves <= 0) return;
+
+                    const cell = e.target.closest('.cell');
+                    if (!cell) return;
+
+                    isMouseDown = true;
+                    startCell = {
+                        row: parseInt(cell.dataset.row),
+                        col: parseInt(cell.dataset.col)
+                    };
+
+                    this.showRotateIndicator(startCell.row, startCell.col);
+                });
+
+                this.boardElement.addEventListener('mousemove', (e) => {
+                    if (!isMouseDown || !startCell) return;
+
+                    const cell = e.target.closest('.cell');
+                    if (!cell) return;
+
+                    const currentRow = parseInt(cell.dataset.row);
+                    const currentCol = parseInt(cell.dataset.col);
+
+                    // Update indicator position
+                    this.updateRotateIndicator(currentRow, currentCol);
+                });
+
+                this.boardElement.addEventListener('mouseup', (e) => {
+                    if (!isMouseDown || !startCell) return;
+
+                    const cell = e.target.closest('.cell');
+                    if (cell) {
+                        const endRow = parseInt(cell.dataset.row);
+                        const endCol = parseInt(cell.dataset.col);
+
+                        const rotateRow = Math.min(startCell.row, endRow);
+                        const rotateCol = Math.min(startCell.col, endCol);
+
+                        // Determine rotation direction based on drag
+                        const deltaRow = endRow - startCell.row;
+                        const deltaCol = endCol - startCell.col;
+                        const clockwise = (deltaRow + deltaCol) >= 0;
+
+                        this.rotate2x2(rotateRow, rotateCol, clockwise);
+                    }
+
+                    isMouseDown = false;
+                    startCell = null;
+                    this.hideRotateIndicator();
+                });
+
+                this.boardElement.addEventListener('mouseleave', () => {
+                    isMouseDown = false;
+                    startCell = null;
+                    this.hideRotateIndicator();
+                });
+            }
+
+            showRotateIndicator(row, col) {
+                const cellSize = 64; // 60px + 4px gap
+                const padding = 5;
+
+                // Clamp to valid 2x2 positions
+                row = Math.min(row, this.boardSize - 2);
+                col = Math.min(col, this.boardSize - 2);
+
+                this.rotateIndicator.style.width = (cellSize * 2) + 'px';
+                this.rotateIndicator.style.height = (cellSize * 2) + 'px';
+                this.rotateIndicator.style.left = (padding + col * cellSize) + 'px';
+                this.rotateIndicator.style.top = (padding + row * cellSize) + 'px';
+                this.rotateIndicator.classList.add('active');
+            }
+
+            updateRotateIndicator(row, col) {
+                const cellSize = 64;
+                const padding = 5;
+
+                row = Math.min(row, this.boardSize - 2);
+                col = Math.min(col, this.boardSize - 2);
+
+                this.rotateIndicator.style.left = (padding + col * cellSize) + 'px';
+                this.rotateIndicator.style.top = (padding + row * cellSize) + 'px';
+            }
+
+            hideRotateIndicator() {
+                this.rotateIndicator.classList.remove('active');
+            }
+
+            async rotate2x2(row, col, clockwise = true) {
+                if (row < 0 || row >= this.boardSize - 1 || col < 0 || col >= this.boardSize - 1) {
+                    return;
+                }
+
+                if (this.isAnimating) return;
+                this.isAnimating = true;
+
+                // Get the 2x2 grid values
+                const temp = [
+                    [this.board[row][col], this.board[row][col + 1]],
+                    [this.board[row + 1][col], this.board[row + 1][col + 1]]
+                ];
+
+                if (clockwise) {
+                    this.board[row][col] = temp[1][0];
+                    this.board[row][col + 1] = temp[0][0];
+                    this.board[row + 1][col + 1] = temp[0][1];
+                    this.board[row + 1][col] = temp[1][1];
+                } else {
+                    this.board[row][col] = temp[0][1];
+                    this.board[row][col + 1] = temp[1][1];
+                    this.board[row + 1][col + 1] = temp[1][0];
+                    this.board[row + 1][col] = temp[0][0];
+                }
+
+                this.moves--;
+                this.render();
+
+                await this.sleep(100);
+                await this.processMatches();
+
+                this.isAnimating = false;
+
+                if (this.moves <= 0) {
+                    setTimeout(() => {
+                        alert(`Game Over! Final Score: ${this.score}`);
+                    }, 500);
+                }
+            }
+
+            async processMatches() {
+                let foundMatches = true;
+
+                while (foundMatches) {
+                    const matchGroups = this.findMatches();
+
+                    if (matchGroups.length === 0) {
+                        foundMatches = false;
+                        break;
+                    }
+
+                    // Check for special gem activations first
+                    const specialActivations = this.checkSpecialActivations(matchGroups);
+                    if (specialActivations.length > 0) {
+                        await this.activateSpecialGems(specialActivations);
+                        continue; // Re-check for matches after special activation
+                    }
+
+                    // Process each match group
+                    for (const group of matchGroups) {
+                        // Highlight matches
+                        this.highlightMatches(group);
+                    }
+                    await this.sleep(300);
+
+                    // Determine if special gem should be created
+                    const specialCreations = [];
+                    for (const group of matchGroups) {
+                        const specialType = this.determineSpecialType(group);
+                        if (specialType) {
+                            // Create special gem at a central position
+                            const centerPos = this.getCenterPosition(group);
+                            specialCreations.push({
+                                pos: centerPos,
+                                type: specialType,
+                                color: this.board[group[0].row][group[0].col].color
+                            });
+                        }
+
+                        // Remove matches
+                        this.removeMatches(group);
+                        this.score += group.length * 10;
+                    }
+
+                    this.render();
+                    await this.sleep(200);
+
+                    // Apply gravity
+                    this.applyGravity();
+                    this.render();
+                    await this.sleep(300);
+
+                    // Fill empty spaces
+                    this.fillEmpty();
+
+                    // Create special gems
+                    for (const {pos, type, color} of specialCreations) {
+                        if (this.board[pos.row][pos.col]) {
+                            this.board[pos.row][pos.col] = {
+                                color: color,
+                                special: type
+                            };
+                        }
+                    }
+
+                    this.render();
+                    await this.sleep(300);
+                }
+            }
+
+            getCenterPosition(group) {
+                const avgRow = Math.round(group.reduce((sum, g) => sum + g.row, 0) / group.length);
+                const avgCol = Math.round(group.reduce((sum, g) => sum + g.col, 0) / group.length);
+                return {row: avgRow, col: avgCol};
+            }
+
+            checkSpecialActivations(matchGroups) {
+                const activations = [];
+
+                for (const group of matchGroups) {
+                    for (const {row, col} of group) {
+                        const gem = this.board[row][col];
+                        if (gem && gem.special) {
+                            activations.push({row, col, special: gem.special, color: gem.color});
+                        }
+                    }
+                }
+
+                return activations;
+            }
+
+            async activateSpecialGems(activations) {
+                for (const activation of activations) {
+                    await this.activateSpecialGem(activation);
+                }
+            }
+
+            async activateSpecialGem({row, col, special, color}) {
+                const gem = this.board[row][col];
+                if (!gem) return;
+
+                // Animate explosion
+                const index = row * this.boardSize + col;
+                const cell = this.boardElement.children[index];
+                if (cell) {
+                    const gemElement = cell.querySelector('.gem');
+                    if (gemElement) gemElement.classList.add('special-explosion');
+                }
+
+                await this.sleep(200);
+
+                const toRemove = [];
+
+                switch(special) {
+                    case 'flame':
+                        // Clear entire row or column (whichever has more matches)
+                        const rowMatches = this.countRowMatches(row, color);
+                        const colMatches = this.countColMatches(col, color);
+
+                        if (rowMatches >= colMatches) {
+                            for (let c = 0; c < this.boardSize; c++) {
+                                toRemove.push({row, col: c});
+                            }
+                        } else {
+                            for (let r = 0; r < this.boardSize; r++) {
+                                toRemove.push({row: r, col});
+                            }
+                        }
+                        this.score += 50;
+                        break;
+
+                    case 'star':
+                        // Clear 5x5 area around the gem
+                        for (let r = Math.max(0, row - 2); r <= Math.min(this.boardSize - 1, row + 2); r++) {
+                            for (let c = Math.max(0, col - 2); c <= Math.min(this.boardSize - 1, col + 2); c++) {
+                                toRemove.push({row: r, col: c});
+                            }
+                        }
+                        this.score += 100;
+                        break;
+
+                    case 'lightning':
+                        // Clear cross pattern
+                        for (let c = 0; c < this.boardSize; c++) {
+                            toRemove.push({row, col: c});
+                        }
+                        for (let r = 0; r < this.boardSize; r++) {
+                            toRemove.push({row: r, col});
+                        }
+                        this.score += 75;
+                        break;
+                }
+
+                // Highlight and remove
+                this.highlightMatches(toRemove);
+                await this.sleep(300);
+
+                this.removeMatches(toRemove);
+                this.render();
+                await this.sleep(200);
+
+                // Apply gravity
+                this.applyGravity();
+                this.render();
+                await this.sleep(300);
+
+                // Fill empty spaces
+                this.fillEmpty();
+                this.render();
+                await this.sleep(300);
+            }
+
+            countRowMatches(row, color) {
+                let count = 0;
+                for (let col = 0; col < this.boardSize; col++) {
+                    if (this.board[row][col] && this.board[row][col].color === color) {
+                        count++;
+                    }
+                }
+                return count;
+            }
+
+            countColMatches(col, color) {
+                let count = 0;
+                for (let row = 0; row < this.boardSize; row++) {
+                    if (this.board[row][col] && this.board[row][col].color === color) {
+                        count++;
+                    }
+                }
+                return count;
+            }
+
+            findMatches() {
+                const matchGroups = [];
+                const visited = new Set();
+
+                // Find all match groups
+                for (let row = 0; row < this.boardSize; row++) {
+                    for (let col = 0; col < this.boardSize; col++) {
+                        const key = `${row},${col}`;
+                        if (visited.has(key)) continue;
+
+                        const gem = this.board[row][col];
+                        if (!gem) continue;
+
+                        const group = this.findMatchGroup(row, col, gem.color, visited);
+                        if (group.length >= 3) {
+                            matchGroups.push(group);
+                        }
+                    }
+                }
+
+                return matchGroups;
+            }
+
+            findMatchGroup(startRow, startCol, color, visited) {
+                const group = [];
+                const queue = [{row: startRow, col: startCol}];
+                const inQueue = new Set([`${startRow},${startCol}`]);
+
+                while (queue.length > 0) {
+                    const {row, col} = queue.shift();
+                    const key = `${row},${col}`;
+
+                    if (visited.has(key)) continue;
+
+                    const gem = this.board[row][col];
+                    if (!gem || gem.color !== color) continue;
+
+                    visited.add(key);
+                    group.push({row, col});
+
+                    // Check adjacent cells
+                    const directions = [
+                        {dr: -1, dc: 0}, // up
+                        {dr: 1, dc: 0},  // down
+                        {dr: 0, dc: -1}, // left
+                        {dr: 0, dc: 1}   // right
+                    ];
+
+                    for (const {dr, dc} of directions) {
+                        const newRow = row + dr;
+                        const newCol = col + dc;
+                        const newKey = `${newRow},${newCol}`;
+
+                        if (newRow >= 0 && newRow < this.boardSize &&
+                            newCol >= 0 && newCol < this.boardSize &&
+                            !visited.has(newKey) && !inQueue.has(newKey)) {
+
+                            const adjacentGem = this.board[newRow][newCol];
+                            if (adjacentGem && adjacentGem.color === color) {
+                                queue.push({row: newRow, col: newCol});
+                                inQueue.add(newKey);
+                            }
+                        }
+                    }
+                }
+
+                return group;
+            }
+
+            determineSpecialType(group) {
+                if (group.length < 4) return null;
+
+                // Check for 5+ in a line
+                if (group.length >= 5) {
+                    const isLine = this.isLineMatch(group);
+                    if (isLine) return 'star';
+                }
+
+                // Check for L or T shape
+                if (this.isLOrTShape(group)) {
+                    return 'lightning';
+                }
+
+                // Check for 4 in a line
+                if (group.length >= 4 && this.isLineMatch(group)) {
+                    return 'flame';
+                }
+
+                // Default for 4+ matches
+                if (group.length >= 4) {
+                    return 'flame';
+                }
+
+                return null;
+            }
+
+            isLineMatch(group) {
+                if (group.length < 4) return false;
+
+                // Check if all in same row
+                const sameRow = group.every(g => g.row === group[0].row);
+                if (sameRow) {
+                    const cols = group.map(g => g.col).sort((a, b) => a - b);
+                    const isConsecutive = cols.every((col, i) => i === 0 || col === cols[i-1] + 1);
+                    return isConsecutive;
+                }
+
+                // Check if all in same column
+                const sameCol = group.every(g => g.col === group[0].col);
+                if (sameCol) {
+                    const rows = group.map(g => g.row).sort((a, b) => a - b);
+                    const isConsecutive = rows.every((row, i) => i === 0 || row === rows[i-1] + 1);
+                    return isConsecutive;
+                }
+
+                return false;
+            }
+
+            isLOrTShape(group) {
+                if (group.length < 4) return false;
+
+                // For each position in the group, check if it forms L or T
+                for (const center of group) {
+                    const {row, col} = center;
+
+                    // Count gems in each direction from this point
+                    const up = group.filter(g => g.col === col && g.row < row).length;
+                    const down = group.filter(g => g.col === col && g.row > row).length;
+                    const left = group.filter(g => g.row === row && g.col < col).length;
+                    const right = group.filter(g => g.row === row && g.col > col).length;
+
+                    // Check for T shape (3 directions)
+                    if ((up >= 1 && left >= 1 && right >= 1) ||
+                        (down >= 1 && left >= 1 && right >= 1) ||
+                        (left >= 1 && up >= 1 && down >= 1) ||
+                        (right >= 1 && up >= 1 && down >= 1)) {
+                        return true;
+                    }
+
+                    // Check for L shape (2 perpendicular directions)
+                    if ((up >= 2 && left >= 1) || (up >= 2 && right >= 1) ||
+                        (down >= 2 && left >= 1) || (down >= 2 && right >= 1) ||
+                        (left >= 2 && up >= 1) || (left >= 2 && down >= 1) ||
+                        (right >= 2 && up >= 1) || (right >= 2 && down >= 1)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            highlightMatches(group) {
+                group.forEach(({ row, col }) => {
+                    const index = row * this.boardSize + col;
+                    const cell = this.boardElement.children[index];
+                    if (cell) {
+                        const gem = cell.querySelector('.gem');
+                        if (gem) gem.classList.add('matched');
+                    }
+                });
+            }
+
+            removeMatches(group) {
+                group.forEach(({ row, col }) => {
+                    this.board[row][col] = null;
+                });
+            }
+
+            applyGravity() {
+                for (let col = 0; col < this.boardSize; col++) {
+                    let writeRow = this.boardSize - 1;
+                    for (let row = this.boardSize - 1; row >= 0; row--) {
+                        if (this.board[row][col] !== null) {
+                            this.board[writeRow][col] = this.board[row][col];
+                            if (writeRow !== row) {
+                                this.board[row][col] = null;
+                            }
+                            writeRow--;
+                        }
+                    }
+                }
+            }
+
+            fillEmpty() {
+                for (let row = 0; row < this.boardSize; row++) {
+                    for (let col = 0; col < this.boardSize; col++) {
+                        if (this.board[row][col] === null) {
+                            this.board[row][col] = {
+                                color: Math.floor(Math.random() * this.gemTypes),
+                                special: null
+                            };
+                        }
+                    }
+                }
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            reset() {
+                this.score = 0;
+                this.moves = 30;
+                this.isAnimating = false;
+                this.board = this.createBoard();
+                this.ensureNoInitialMatches();
+                this.render();
+            }
+        }
+
+        // Initialize game
+        const game = new BejeweledTwist();
+    </script>
+</body>
+</html>
